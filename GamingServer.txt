@@ -1,0 +1,18 @@
+Hacker:hubert
+
+Cel: Zdobycie flagi uzytkownika oraz flagi uzytkownika root
+
+IP:10.10.121.118
+
+Porty: 22,80
+
+Apache/2.4.29
+
+<!-- john, please add some actual content to the site! lorem ipsum is horrible to look at. → - Znaleziony komentarz na stronie internetowej
+
+john@exploitable:~$ cat user.txt 
+a5c2ff8b9c2e3d4fe9d4ff2f1a5a6e7e
+
+/mnt/root/root # cat root.txt
+2e337b8c9f3aff0c2b3e8d4e6a7c88fc
+

